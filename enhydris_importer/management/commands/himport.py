@@ -1,3 +1,6 @@
+from optparse import make_option
+import textwrap
+
 from django.core.management.base import BaseCommand
 from django.db import connections, transaction
 from django.conf import settings
@@ -19,8 +22,19 @@ def rollback_all_databases():
 
 
 class Command(BaseCommand):
-    args = ''
-    help = 'Imports data'
+    option_list = BaseCommand.option_list + (
+        make_option('--dry-run',
+                    action='store_true',
+                    dest='dry_run',
+                    default='False',
+                    help='Rollback all changes when finished'),
+    )
+    help = textwrap.dedent('''\
+        Import data files into Enhydris.
+
+        The current directory must be a directory with files as specified in
+        http://hydroscope.gr/, Documents, Data entry standardization. This
+        command checks them and inserts them into the databases as needed.''')
 
     def handle(self, *args, **options):
         c = ExternalDataChecker()
@@ -29,9 +43,15 @@ class Command(BaseCommand):
             for h in c.hts_entries:
                 self.process_file(h['filename'], h['station_id'],
                                   h['variable_id'], h['step_id'])
-        finally:
-            # Temporary until we make sure it works
+        except:
             rollback_all_databases()
+            raise
+        if options['dry_run']:
+            print "Rolling back"
+            rollback_all_databases()
+        else:
+            print "Committing"
+            commit_all_databases()
     for db in settings.DATABASES:
         handle = transaction.commit_manually(using=db)(handle)
 
