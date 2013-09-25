@@ -40,7 +40,7 @@ class Command(BaseCommand):
             rollback_all_databases()
 
     def process_file(filename, station_id, variable_id, step_id):
-        gentity = models.Gentity.objects.using('main').get(pk=station_id)
+        gentity = models.Gentity.objects.using('default').get(pk=station_id)
         db = gentity.original_db.hostname.split('.')[0]
         station_local_id = gentity.original_id
         ts, created = models.Timeseries.objects.using(db).get_or_create(
