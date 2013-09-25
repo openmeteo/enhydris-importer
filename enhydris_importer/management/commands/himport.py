@@ -7,7 +7,7 @@ from django.conf import settings
 import pthelma
 from enhydris.hcore import models
 
-from .hcheck import ExternalDataChecker
+from ._hcheck import ExternalDataChecker
 
 
 logger = logging.getLogger(__name__)
