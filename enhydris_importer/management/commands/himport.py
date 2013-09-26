@@ -40,13 +40,18 @@ class Command(BaseCommand):
         c = ExternalDataChecker()
         c.check()
         try:
+            errors = False
             for h in c.hts_entries:
-                self.process_file(h['filename'], h['station_id'],
-                                  h['variable_id'], h['step_id'])
+                try:
+                    self.process_file(h['filename'], h['station_id'],
+                                      h['variable_id'], h['step_id'])
+                except Exception as e:
+                    print str(e)
+                    errors = True
         except:
             rollback_all_databases()
             raise
-        if options['dry_run']:
+        if options['dry_run'] or errors:
             print "Rolling back"
             rollback_all_databases()
         else:
