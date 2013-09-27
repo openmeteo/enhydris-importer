@@ -26,7 +26,7 @@ class Command(BaseCommand):
         make_option('--dry-run',
                     action='store_true',
                     dest='dry_run',
-                    default='False',
+                    default=False,
                     help='Rollback all changes when finished'),
     )
     help = textwrap.dedent('''\
