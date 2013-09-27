@@ -63,10 +63,25 @@ class Command(BaseCommand):
     def process_file(self, filename, station_id, variable_id, step_id):
         gentity = models.Gentity.objects.using('default').get(pk=station_id)
         db = gentity.original_db.hostname.split('.')[0]
-        station_local_id = gentity.original_id
-        ts, created = models.Timeseries.objects.using(db).get_or_create(
-            gentity__id=station_local_id, variable__id=variable_id,
-            time_step__id=step_id)
+        local_gentity = models.Gentity.objects.using(db).get(
+            pk=gentity.original_id)
+        local_variable = models.Variable.objects.using(db).get(pk=variable_id)
+        local_step = models.TimeStep.objects.using(db).get(pk=step_id)
+        try:
+            ts = models.Timeseries.objects.using(db).get(
+                gentity=local_gentity, variable=local_variable,
+                time_step=local_step)
+            created = False
+        except models.Timeseries.DoesNotExist:
+            unit_of_measurement = models.UnitOfMeasurement.objects.using(
+                db).get(variables__exact=local_variable)
+            time_zone = models.TimeZone.objects.using(db).get(code='EET')
+            ts = models.Timeseries(gentity=local_gentity,
+                variable=local_variable, time_step=local_step,
+                actual_offset_minutes=0, actual_offset_months=0,
+                unit_of_measurement=unit_of_measurement, time_zone=time_zone)
+            ts.save(using=db)
+            created = True
         t = timeseries.Timeseries(ts.id)
         t.read_from_db(connections[db])
         nexisting_records = len(t)
@@ -77,6 +92,6 @@ class Command(BaseCommand):
         t.write_to_db(connections[db], commit=False)
         print(
             'Station {0}, {1}, {2}, {3} timeseries, {4} + {5} records'
-            .format(station_id, db, station_local_id,
+            .format(station_id, db, local_gentity.id,
                     'new' if created else 'existing',
                     nexisting_records, len(t1)))
