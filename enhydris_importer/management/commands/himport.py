@@ -46,7 +46,7 @@ class Command(BaseCommand):
                     self.process_file(h['filename'], h['station_id'],
                                       h['variable_id'], h['step_id'])
                 except Exception as e:
-                    print str(e)
+                    print('{0}: {1}'.format(h['filename'], str(e)))
                     errors = True
         except:
             rollback_all_databases()
