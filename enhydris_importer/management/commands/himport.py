@@ -28,6 +28,11 @@ class Command(BaseCommand):
                     dest='dry_run',
                     default=False,
                     help='Rollback all changes when finished'),
+        make_option('--ignore-spreadsheet',
+                    action='store_true',
+                    dest='ignore_spreadsheet',
+                    default=False,
+                    help="Don't cross-check data with the spreadsheet"),
     )
     help = textwrap.dedent('''\
         Import data files into Enhydris.
@@ -38,7 +43,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         c = ExternalDataChecker()
-        c.check()
+        if not options['ignore_spreadsheet']:
+            c.check()
         try:
             errors = False
             for h in c.hts_entries:
