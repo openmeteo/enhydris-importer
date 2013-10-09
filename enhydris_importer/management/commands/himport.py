@@ -50,6 +50,11 @@ class Command(BaseCommand):
                          '"Data from {0:%Y-%m-%d %H:%M} to '
                          '{1:%Y-%m-%d %H:%M} entered with himport on '
                          '{2:%Y-%m-%d %H:%M}"'),
+        make_option('--ignore-spreadsheet',
+                    action='store_true',
+                    dest='ignore_spreadsheet',
+                    default=False,
+                    help="Don't cross-check data with the spreadsheet"),
     )
     help = textwrap.dedent('''\
         Import data files into Enhydris.
@@ -61,7 +66,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.options = options
         c = ExternalDataChecker()
-        c.check()
+        if not options['ignore_spreadsheet']:
+            c.check()
         try:
             errors = False
             for h in c.hts_entries:
