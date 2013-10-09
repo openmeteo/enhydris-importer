@@ -1,5 +1,6 @@
 from optparse import make_option
 import textwrap
+from datetime import datetime
 
 from django.core.management.base import BaseCommand
 from django.db import connections, transaction
@@ -28,6 +29,27 @@ class Command(BaseCommand):
                     dest='dry_run',
                     default=False,
                     help='Rollback all changes when finished'),
+        make_option('--only-metadata',
+                    action='store_true',
+                    dest='only_metadata',
+                    default=False,
+                    help='Only enter the metadata; assume the data is already '
+                         'entered'),
+        make_option('--comment',
+                    action='store',
+                    dest='comment',
+                    default='Data from {0:%Y-%m-%d %H:%M} to '
+                            '{1:%Y-%m-%d %H:%M} entered with himport on '
+                            '{2:%Y-%m-%d %H:%M}',
+                    help='Append specified comment to remarks field for all '
+                         'time series; if the comment contains {0}, {1} or '
+                         '{2}, they are replaced with the start and end dates '
+                         'of the time series and the current date; these '
+                         'can optionally include format specifiers, like '
+                         '{0:%Y-%m-%d %H:%M}. The default is '
+                         '"Data from {0:%Y-%m-%d %H:%M} to '
+                         '{1:%Y-%m-%d %H:%M} entered with himport on '
+                         '{2:%Y-%m-%d %H:%M}"'),
     )
     help = textwrap.dedent('''\
         Import data files into Enhydris.
@@ -37,6 +59,7 @@ class Command(BaseCommand):
         command checks them and inserts them into the databases as needed.''')
 
     def handle(self, *args, **options):
+        self.options = options
         c = ExternalDataChecker()
         c.check()
         try:
@@ -76,7 +99,8 @@ class Command(BaseCommand):
             unit_of_measurement = models.UnitOfMeasurement.objects.using(
                 db).get(variables__exact=local_variable)
             time_zone = models.TimeZone.objects.using(db).get(code='EET')
-            ts = models.Timeseries(gentity=local_gentity,
+            ts = models.Timeseries(
+                gentity=local_gentity,
                 variable=local_variable, time_step=local_step,
                 actual_offset_minutes=0, actual_offset_months=0,
                 unit_of_measurement=unit_of_measurement, time_zone=time_zone)
@@ -88,10 +112,19 @@ class Command(BaseCommand):
         t1 = timeseries.Timeseries()
         with open(filename) as f:
             t1.read_file(f)
-        t.append(t1)
-        t.write_to_db(connections[db], commit=False)
+        if not self.options['only_metadata']:
+            t.append(t1)
+            t.write_to_db(connections[db], commit=False)
+        self.add_comment(ts, t1.bounding_dates())
         print(
             'Station {0}, {1}, {2}, {3} timeseries, {4} + {5} records'
             .format(station_id, db, local_gentity.id,
                     'new' if created else 'existing',
                     nexisting_records, len(t1)))
+
+    def add_comment(self, ts, bounding_dates):
+        remarks = ts.remarks.strip()
+        separator = '\n\n' if ts.remarks else ''
+        ts.remarks = remarks + separator + self.options['comment'].format(
+            bounding_dates[0], bounding_dates[1], datetime.now())
+        ts.save()
