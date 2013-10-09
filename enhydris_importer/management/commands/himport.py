@@ -1,3 +1,4 @@
+import sys
 from optparse import make_option
 import textwrap
 from datetime import datetime
@@ -138,6 +139,7 @@ class Command(BaseCommand):
     def add_comment(self, ts, bounding_dates):
         remarks = ts.remarks.strip()
         separator = '\n\n' if ts.remarks else ''
-        ts.remarks = remarks + separator + self.options['comment'].format(
-            bounding_dates[0], bounding_dates[1], datetime.now())
+        ts.remarks = remarks + separator + self.options['comment'].decode(
+            sys.stdin.encoding).format(bounding_dates[0], bounding_dates[1],
+                                       datetime.now())
         ts.save()
