@@ -55,6 +55,11 @@ class Command(BaseCommand):
                     dest='ignore_spreadsheet',
                     default=False,
                     help="Don't cross-check data with the spreadsheet"),
+        make_option('--failfast',
+                    action='store_true',
+                    dest='failfast',
+                    default=False,
+                    help='Stop immediately on error'),
     )
     help = textwrap.dedent('''\
         Import data files into Enhydris.
@@ -77,6 +82,8 @@ class Command(BaseCommand):
                 except Exception as e:
                     print('{0}: {1}'.format(h['filename'], str(e)))
                     errors = True
+                    if options['failfast']:
+                        raise
         except:
             rollback_all_databases()
             raise
